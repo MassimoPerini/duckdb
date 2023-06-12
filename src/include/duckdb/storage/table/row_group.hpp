@@ -146,12 +146,12 @@ public:
 	void Verify();
 
 	void NextVector(CollectionScanState &state);
+    vector<shared_ptr<ColumnData>> &GetColumns();
 
 private:
 	ChunkInfo *GetChunkInfo(idx_t vector_idx);
 	ColumnData &GetColumn(storage_t c);
 	idx_t GetColumnCount() const;
-	vector<shared_ptr<ColumnData>> &GetColumns();
 
 	template <TableScanType TYPE>
 	void TemplatedScan(TransactionData transaction, CollectionScanState &state, DataChunk &result);

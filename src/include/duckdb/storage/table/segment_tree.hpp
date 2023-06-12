@@ -36,6 +36,9 @@ public:
 	virtual ~SegmentTree() {
 	}
 
+    //! The nodes in the tree, can be binary searched
+    vector<SegmentNode<T>> nodes;
+
 	//! Locks the segment tree. All methods to the segment tree either lock the segment tree, or take an already
 	//! obtained lock.
 	SegmentLock Lock() {
@@ -274,8 +277,6 @@ protected:
 	}
 
 private:
-	//! The nodes in the tree, can be binary searched
-	vector<SegmentNode<T>> nodes;
 	//! Lock to access or modify the nodes
 	mutex node_lock;
 

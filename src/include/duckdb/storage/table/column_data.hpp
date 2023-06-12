@@ -145,7 +145,8 @@ public:
 	void MergeStatistics(const BaseStatistics &other);
 	void MergeIntoStatistics(BaseStatistics &other);
 	unique_ptr<BaseStatistics> GetStatistics();
-
+    //! The segments holding the data of this column segment
+    ColumnSegmentTree data;
 protected:
 	//! Append a transient segment
 	void AppendTransientSegment(SegmentLock &l, idx_t start_row);
@@ -157,9 +158,8 @@ protected:
 	template <bool SCAN_COMMITTED, bool ALLOW_UPDATES>
 	idx_t ScanVector(TransactionData transaction, idx_t vector_index, ColumnScanState &state, Vector &result);
 
+
 protected:
-	//! The segments holding the data of this column segment
-	ColumnSegmentTree data;
 	//! The lock for the updates
 	mutex update_lock;
 	//! The updates for this column segment
