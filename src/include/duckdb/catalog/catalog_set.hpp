@@ -80,8 +80,9 @@ public:
 	                            DependencyList &dependencies);
 
 	DUCKDB_API bool AlterEntry(CatalogTransaction transaction, const string &name, AlterInfo &alter_info);
+    DUCKDB_API bool CustomAlter(CatalogTransaction &transaction, const string &name, const string &col_name);
 
-	DUCKDB_API bool DropEntry(CatalogTransaction transaction, const string &name, bool cascade,
+    DUCKDB_API bool DropEntry(CatalogTransaction transaction, const string &name, bool cascade,
 	                          bool allow_drop_internal = false);
 	DUCKDB_API bool DropEntry(ClientContext &context, const string &name, bool cascade,
 	                          bool allow_drop_internal = false);
