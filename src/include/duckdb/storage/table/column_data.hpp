@@ -147,6 +147,9 @@ public:
 	unique_ptr<BaseStatistics> GetStatistics();
     //! The segments holding the data of this column segment
     ColumnSegmentTree data;
+    //! The stats of the root segment
+    unique_ptr<SegmentStatistics> stats;
+
 protected:
 	//! Append a transient segment
 	void AppendTransientSegment(SegmentLock &l, idx_t start_row);
@@ -166,8 +169,6 @@ protected:
 	unique_ptr<UpdateSegment> updates;
 	//! The internal version of the column data
 	idx_t version;
-	//! The stats of the root segment
-	unique_ptr<SegmentStatistics> stats;
 };
 
 } // namespace duckdb

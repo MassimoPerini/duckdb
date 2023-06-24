@@ -113,6 +113,9 @@ public:
 	}
     //! The segment trees holding the various row_groups of the table
     shared_ptr<RowGroupSegmentTree> row_groups;
+    //! Table statistics
+    TableStatistics stats;
+
 
 private:
 	bool IsEmpty(SegmentLock &) const;
@@ -127,8 +130,6 @@ private:
 	//! The column types of the row group collection
 	vector<LogicalType> types;
 	idx_t row_start;
-	//! Table statistics
-	TableStatistics stats;
 };
 
 } // namespace duckdb

@@ -246,11 +246,11 @@ bool CatalogSet::CustomAlter(CatalogTransaction &transaction, const string &name
     else {
         std::cout << "idx is: " << updated_column << std::endl;
     }
-
     shared_ptr<RowGroupCollection> factTableRowGroup = fact_table.row_groups;//still a table
     shared_ptr<RowGroupCollection> repTableRowGroup = rep_table.row_groups;
     //fact_table.row_groups.swap(rep_table.row_groups);
-
+    //copy stats:
+    factTableRowGroup->stats.MergeStats(updated_column, repTableRowGroup->stats.GetStats(0).Statistics());
     std::cout << "fact row group size: " << fact_table.GetTotalRows() << std::endl;
     std::cout << "rep row group size: " << rep_table.GetTotalRows() << std::endl;
 
@@ -269,6 +269,10 @@ bool CatalogSet::CustomAlter(CatalogTransaction &transaction, const string &name
 
 
     while (factTable_group) {//iterate over tree
+        factTable_group->MergeStatistics(updated_column, *repTable_group->GetStatistics(0));
+        //std::cout<<"NEW STATISTICS: "<<factTable_group->GetStatistics(updated_column)->ToString()<<std::endl;
+        //std::cout<<"NEW STATISTICS 2: "<<factTable_group->GetColumns()[updated_column]->GetStatistics()->ToString()<<std::endl;
+
         ColumnData &repCol = *repTable_group->GetColumns()[0];//Get col to move (table has single col)
         if (repCol.type.InternalType() == PhysicalType::STRUCT || repCol.type.InternalType() == PhysicalType::LIST ||
             repCol.type.id() == LogicalTypeId::VALIDITY) {
@@ -289,7 +293,7 @@ bool CatalogSet::CustomAlter(CatalogTransaction &transaction, const string &name
 
         vector<SegmentNode<ColumnSegment>> segments = repCol.data.MoveSegments();
         repCol.count = 0;
-        ((StandardColumnData &)repCol).data.Reinitialize();
+        //((StandardColumnData &)repCol).data.Reinitialize();
 
         for (size_t i = 0; i<segments.size(); i++) {
             ColumnSegment *segment = segments[i].node.get();
@@ -298,9 +302,9 @@ bool CatalogSet::CustomAlter(CatalogTransaction &transaction, const string &name
             offset += other.count;
             factTable_group->GetColumns()[updated_column]->count += other.count;
             //Need to destroy segment, now is invalid as data have been moved to new segment
-            std::cout<<"SEGMENT COUNT: "<<factTable_group->GetColumns()[updated_column]->data.GetSegmentCount()<<std::endl;
+            factTable_group->GetColumns()[updated_column]->data.Verify();
+            //std::cout<<"SEGMENT COUNT: "<<factTable_group->GetColumns()[updated_column]->data.GetSegmentCount()<<std::endl;
         }
-
         std::shared_ptr<StandardColumnData> new_col = std::dynamic_pointer_cast<StandardColumnData>(factTable_group->GetColumns()[updated_column]);
 
         //copy validity
@@ -319,21 +323,30 @@ bool CatalogSet::CustomAlter(CatalogTransaction &transaction, const string &name
         }
 
         // update column
-        factTable_group->GetColumns()[updated_column]->column_index = updated_column;
+        //factTable_group->GetColumns()[updated_column]->column_index = updated_column;
         // copy stat
-        factTable_group->GetStatistics(updated_column) = repTable_group->GetStatistics(0);
+        //BaseStatistics::CreateEmpty
+        //std::cout<<"STATISTICS 3-1: "<<factTable_group->GetColumns()[updated_column]->stats->statistics.ToString()<<std::endl;
+        factTable_group->GetColumns()[updated_column]->stats = make_uniq<SegmentStatistics>(std::move(*repCol.stats));
+        //std::cout<<"STATISTICS 3-2: "<<factTable_group->GetColumns()[updated_column]->stats->statistics.ToString()<<std::endl;
+        //std::cout<<"STATISTICS 3-3: "<<factTable_group->GetColumns()[1]->stats->statistics.ToString()<<std::endl;
+        //factTable_group->GetStatistics(updated_column)->Merge(*repTable_group->GetStatistics(0));
+        //factTable_group->GetStatistics(updated_column) = repTable_group->GetStatistics(0);
 
         shared_ptr<ColumnData> factCol = factTable_group->GetColumns()[updated_column];
-        std::cout << "factCol->column_index: " << factCol->column_index << std::endl;
+        //std::cout << "factCol->column_index: " << factCol->column_index << std::endl;
         // the info.table is still wrong...
-        std::cout << "factCol->info.table: " << factCol->info.table << std::endl;
+        //std::cout << "factCol->info.table: " << factCol->info.table << std::endl;
 
         factTable_group->Verify();
 
         factTable_group = (RowGroup *)factTable_group->Next();
         repTable_group = (RowGroup *)repTable_group->Next();
-        std::cout<<"A: "<<factTable_group<<" B: "<<repTable_group<<std::endl;
+        //std::cout<<"A: "<<factTable_group<<" B: "<<repTable_group<<std::endl;
     }
+
+    factTableRowGroup->Verify();
+    factTableRowGroupTree->Verify();
 
     //rep_table.row_groups->RemoveColumn(0);
     //rep_table.row_groups->total_rows = 0;
@@ -364,6 +377,7 @@ bool CatalogSet::AlterEntry(CatalogTransaction transaction, const string &name, 
 
         DataTable &fact_table = (dynamic_cast<TableCatalogEntry *>(entry.get()))->GetStorage();
         for (std::size_t i = 0; i < fact_table.column_definitions.size(); ++i) {
+            //std::cout<<fact_table.column_definitions[i].GetName()<<std::endl;
             if (fact_table.column_definitions[i].GetName() == add_column_info.column_name) {
                 std::cout<<"Invoking custom alter table...";
                 return CustomAlter(transaction, name, add_column_info.column_name);
